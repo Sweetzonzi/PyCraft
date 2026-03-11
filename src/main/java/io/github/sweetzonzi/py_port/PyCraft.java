@@ -28,6 +28,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
+import io.github.sweetzonzi.py_port.MCWebSocketServer;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(PyCraft.MOD_ID)
@@ -36,6 +37,8 @@ public class PyCraft {
     public static final String MOD_ID = "py_port";
     // Directly reference a slf4j logger
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    private MCWebSocketServer wsServer;
     // Create a Deferred Register to hold Blocks which will all be registered under the "py_port" namespace
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MOD_ID);
     // Create a Deferred Register to hold Items which will all be registered under the "py_port" namespace
@@ -94,6 +97,20 @@ public class PyCraft {
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
         LOGGER.info("HELLO from server starting");
+
+        try {
+
+            wsServer = new MCWebSocketServer(8765);
+
+            wsServer.start();
+
+            LOGGER.info("WebSocket server started on port 8765");
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+        }
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
