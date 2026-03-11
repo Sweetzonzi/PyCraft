@@ -99,15 +99,10 @@ public class PyCraft {
         LOGGER.info("HELLO from server starting");
 
         try {
-
             wsServer = new MCWebSocketServer(8765);
-
             wsServer.start();
-
             LOGGER.info("WebSocket server started on port 8765");
-
         } catch (Exception e) {
-
             e.printStackTrace();
 
         }
