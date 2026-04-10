@@ -40,6 +40,7 @@ public class QuatUavItem extends Item {
             agent.setPosition(transform.getTranslation());//设置初始位姿
             agent.setRotation(transform.getRotation());
             agent.addToLevel();
+            agent.initHover();  // 设置目标为当前位置，开始悬停
             return InteractionResultHolder.consume(stack);
         } else return InteractionResultHolder.success(stack);
     }

@@ -80,17 +80,42 @@ public class QuatUavAgent extends AbstractAgent {
     public void prePhysicsTick() {
         super.prePhysicsTick();
         // 直接设置推力 TODO: 改为在无人机控制器里设置
-        if (physicsTickCount < 5) {
-            leftFront.setTargetThrust(0.25f);
-            rightFront.setTargetThrust(0.25f);
-            leftBack.setTargetThrust(0.3f);
-            rightBack.setTargetThrust(0.3f);
-        } else {
-            leftFront.setTargetThrust(0.3f);
-            rightFront.setTargetThrust(0.3f);
-            leftBack.setTargetThrust(0.3f);
-            rightBack.setTargetThrust(0.3f);
-        }
+    }
+
+    public void initHover() {
+        // 设置目标为当前位置，实现悬停
+        controller.hover();
+    }
+
+    /**
+     * 设置目标位置（绝对坐标）
+     */
+    public void setTargetPosition(Vector3f pos) {
+        controller.setTarget(pos);
+    }
+
+    /**
+     * 设置目标位置（Minecraft坐标）
+     */
+    public void setTargetPosition(net.minecraft.world.phys.Vec3 pos) {
+        controller.setTarget(pos);
+    }
+
+    /**
+     * 向前飞N格（相对当前位置）
+     */
+    public void moveForward(float blocks) {
+        Vector3f current = getPosition();
+        Vector3f target = current.add(0, 0, -blocks);  // Z-是前方
+        setTargetPosition(target);
+    }
+
+    /**
+     * 向上飞N格
+     */
+    public void moveUp(float blocks) {
+        Vector3f current = getPosition();
+        setTargetPosition(current.add(0, blocks, 0));
     }
 
     /**
