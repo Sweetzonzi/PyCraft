@@ -44,6 +44,9 @@ public class PyPayloadRegistry {
         register(AttackEntityPayload.TYPE, AttackEntityPayload::handle);
         register(RemoveEntityPayload.TYPE, RemoveEntityPayload::handle);
         register(SetOverheadPayload.TYPE, SetOverheadPayload::handle);
+        register(SetUavTargetPayload.TYPE, SetUavTargetPayload::handle);
+        register(GetUavStatePayload.TYPE, GetUavStatePayload::handle);
+        register(GetUavListPayload.TYPE, GetUavListPayload::handle);
         PyCraft.LOGGER.info("[PyPayload] Registered {} payload types", HANDLERS.size());
     }
 
