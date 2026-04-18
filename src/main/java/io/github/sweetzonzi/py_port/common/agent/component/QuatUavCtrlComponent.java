@@ -133,18 +133,6 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
         if (Math.abs(ey) < deadband) ey = 0;
         if (Math.abs(ez) < deadband) ez = 0;
 
-        if (Math.abs(ex) > deadband) {
-            integralX += ex * Dt;
-        } else {
-            integralX *= 0.95f; // 慢慢释放
-        }
-
-        if (Math.abs(ez) > deadband) {
-            integralZ += ez * Dt;
-        } else {
-            integralZ *= 0.95f;
-        }
-
         // 积分
         integralX = clamp(integralX + ex * Dt, -INTEGRAL_LIMIT_POS, INTEGRAL_LIMIT_POS);
         integralY = clamp(integralY + ey * Dt, -INTEGRAL_LIMIT_POS, INTEGRAL_LIMIT_POS);
@@ -171,7 +159,6 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
         Quaternion result = multiply(temp, quat);
         Vector3f accBody = new Vector3f(result.getX(), result.getY(), result.getZ());
 
-
         float phiDes = FastMath.atan2(accBody.z, gravity);
         float thetaDes = FastMath.atan2(-accBody.x, gravity);
 
@@ -186,9 +173,12 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
         float psi = agent.getYaw();
 
         // 角速度轴
+        //float p = angularVelLocal.x; // roll
+        //float r = angularVelLocal.y; // yaw
+        //float q = angularVelLocal.z; // pitch
         float p = angularVelLocal.x; // roll
-        float r = angularVelLocal.y; // yaw
-        float q = angularVelLocal.z; // pitch
+        float q = angularVelLocal.y; // pitch
+        float r = angularVelLocal.z; // yaw
 
         float ePhi = phiDes - phi;
         float eTheta = thetaDes - theta;
@@ -198,6 +188,7 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
 
         if (Math.abs(ePhi) < attDeadband) ePhi = 0;
         if (Math.abs(eTheta) < attDeadband) eTheta = 0;
+        if(Math.abs((ePsi)) < attDeadband) ePsi = 0;
 
         while (ePsi > FastMath.PI) ePsi -= 2 * FastMath.PI;
         while (ePsi < -FastMath.PI) ePsi += 2 * FastMath.PI;
@@ -209,15 +200,14 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
         float torqueRoll = (pDes - p) * 0.05f;
         float torquePitch = (qDes - q) * 0.05f;
         float torqueYaw = (rDes - r) * 0.1f;
+        agent.getBody().applyTorque(new Vector3f(0, torqueYaw, 0));
 
         float rollDiff = torqueRoll / (2 * armLength);
         float pitchDiff = torquePitch / (2 * armLength);
-        float yawDiff = torqueYaw / 4f;
-
-        float tLF = baseThrust - rollDiff - pitchDiff - yawDiff;
-        float tRF = baseThrust + rollDiff - pitchDiff + yawDiff;
-        float tLB = baseThrust - rollDiff + pitchDiff + yawDiff;
-        float tRB = baseThrust + rollDiff + pitchDiff - yawDiff;
+        float tLF = baseThrust - rollDiff - pitchDiff;
+        float tRF = baseThrust + rollDiff - pitchDiff;
+        float tLB = baseThrust - rollDiff + pitchDiff;
+        float tRB = baseThrust + rollDiff + pitchDiff;
 
         // 推力非负保护
         float minT = Math.min(Math.min(tLF, tRF), Math.min(tLB, tRB));
@@ -232,5 +222,25 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
         thrusters.get(1).setTargetThrust(clamp(tRF / maxThrust, 0f, 1f));
         thrusters.get(2).setTargetThrust(clamp(tLB / maxThrust, 0f, 1f));
         thrusters.get(3).setTargetThrust(clamp(tRB / maxThrust, 0f, 1f));
+
+        // 角阻尼
+        Vector3f angVel = new Vector3f();
+        agent.getBody().getAngularVelocity(angVel);
+        // 阻尼系数
+        float damping = 0.3f;
+        // 力矩
+        Vector3f dampingTorque = angVel.mult(-damping, new Vector3f());
+        // 施加到刚体
+        agent.getBody().applyTorque(dampingTorque);
+
+        // 角速度限制
+        float maxRate = 2.0f;
+        Vector3f clamped = new Vector3f(
+                clamp(angVel.x, -maxRate, maxRate),
+                clamp(angVel.y, -maxRate, maxRate),
+                clamp(angVel.z, -maxRate, maxRate)
+        );
+        agent.getBody().setAngularVelocity(clamped);
+
     }
 }
