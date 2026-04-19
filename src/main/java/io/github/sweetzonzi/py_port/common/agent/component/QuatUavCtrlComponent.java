@@ -1,14 +1,18 @@
 package io.github.sweetzonzi.py_port.common.agent.component;
 
+import cn.solarmoon.spark_core.physics.PhysicsHelperKt;
+import cn.solarmoon.spark_core.util.SparkMathKt;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import io.github.sweetzonzi.py_port.common.agent.AbstractAgent;
+import io.github.sweetzonzi.py_port.util.control.PIDController;
+import jme3utilities.math.MyQuaternion;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+
 import java.util.List;
-import static com.jme3.math.FastMath.clamp;
 
 public class QuatUavCtrlComponent extends AbstractAgentComponent {
     private final List<ThrusterComponent> thrusters;
@@ -19,45 +23,40 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
     protected static final EntityDataAccessor<Float> TARGET_YAW = SynchedEntityData.defineId(QuatUavCtrlComponent.class, EntityDataSerializers.FLOAT);
 
     private float mass;
+    private Vector3f invInertiaLocal = new Vector3f();
     private final float gravity = 9.81f;
-    private float armLength;
     private float maxThrust;
 
-    // 外环PID
-    private float kpPosX = 1.0f;
-    private float kpPosY = 1.0f;
-    private float kpPosZ = 1.5f;
+    /**
+     * 控制器
+     */
+    private PIDController pidVx, pidVy, pidVz;
+    private PIDController pidRollRate, pidPitchRate, pidYawRate;
+    /**
+     * 控制器参数
+     */
+    private float posKp = 2.0f;  // 位置P增益
+    private float angVelKp = 2.0f;
+    private float maxSpeed = 5.0f;
+    private float maxTorque = 10.0f;
 
-    private float kiPosX = 0.001f;
-    private float kiPosY = 0.01f;
-    private float kiPosZ = 0.04f;
-
-    private float kdPosX = 1.5f;
-    private float kdPosY = 1.5f;
-    private float kdPosZ = 2.0f;
-
-    // 内环PID
-    private float kpAttRoll = 6.0f;
-    private float kpAttPitch = 6.0f;
-    private float kpAttYaw = 3.0f;
-
-    private float kdAttRoll = 5.0f;
-    private float kdAttPitch = 5.0f;
-    private float kdAttYaw = 2.0f;
-
-    private float integralX = 0, integralY = 0, integralZ = 0;
-    private float integralRoll = 0, integralPitch = 0, integralYaw = 0;
-
-    private static final float INTEGRAL_LIMIT_POS = 1.0f;
-    private static final float INTEGRAL_LIMIT_ATT = 1.0f;
-    private static final float Dt = 0.02f;
+    private static final float Dt = 0.01f;
 
     public QuatUavCtrlComponent(String name, AbstractAgent agent, List<ThrusterComponent> thrusters) {
         super(name, agent);
         this.thrusters = thrusters;
         this.mass = agent.getBody().getMass();
-        this.armLength = thrusters.get(0).getOffset().length();
+        agent.getBody().getInverseInertiaLocal(this.invInertiaLocal);
         this.maxThrust = thrusters.get(0).getMaxThrust();
+
+        double maxOut = maxThrust * 4; // 四个推进器总推力上限
+        pidVx = new PIDController(5.0, 0.1, 0.5, Dt, -maxOut, maxOut);
+        pidVy = new PIDController(5.0, 0.1, 0.5, Dt, -maxOut, maxOut);
+        pidVz = new PIDController(5.0, 0.1, 0.5, Dt, -maxOut, maxOut);
+        // 角速度环 PID，输出扭矩（Nm）
+        pidRollRate = new PIDController(0.5, 0.1, 0.02, Dt, -maxTorque, maxTorque);
+        pidPitchRate = new PIDController(0.5, 0.1, 0.02, Dt, -maxTorque, maxTorque);
+        pidYawRate = new PIDController(1.5, 0.05, 0.01, Dt, -maxTorque, maxTorque);
     }
 
     @Override
@@ -94,153 +93,90 @@ public class QuatUavCtrlComponent extends AbstractAgentComponent {
     public void hover() {
         setTarget(agent.getPosition());
         setTargetYaw(agent.getYaw() * FastMath.RAD_TO_DEG);
-        resetIntegrals();
-    }
-
-    public void resetIntegrals() {
-        integralX = integralY = integralZ = 0;
-        integralRoll = integralPitch = integralYaw = 0;
-    }
-
-    private Quaternion multiply(Quaternion a, Quaternion b) {
-        return new Quaternion(
-                a.getW()*b.getX() + a.getX()*b.getW() + a.getY()*b.getZ() - a.getZ()*b.getY(),
-                a.getW()*b.getY() - a.getX()*b.getZ() + a.getY()*b.getW() + a.getZ()*b.getX(),
-                a.getW()*b.getZ() + a.getX()*b.getY() - a.getY()*b.getX() + a.getZ()*b.getW(),
-                a.getW()*b.getW() - a.getX()*b.getX() - a.getY()*b.getY() - a.getZ()*b.getZ()
-        );
     }
 
     @Override
     public void prePhysicsTick() {
         super.prePhysicsTick();
         if (getLevel().isClientSide()) return;
-
+        /* 速度环 - 目标位置求取目标速度 */
         Vector3f pos = agent.getPosition();
-        Vector3f vel = new Vector3f();
-        agent.getBody().getLinearVelocity(vel);
-        Vector3f angularVelLocal = agent.getAngularVelocityLocal();
-
         Vector3f target = getTarget();
 
-        float ex = target.x - pos.x;
-        float ey = target.y - pos.y;
-        float ez = target.z - pos.z;
+        Vector3f posError = target.subtract(pos);
+        Vector3f targetVel = posError.mult(posKp); // 简单的P控制器
+        // 限幅
+        if (targetVel.length() > maxSpeed) targetVel = targetVel.normalize().mult(maxSpeed);
 
-        float deadband = 0.05f; // 误差死区
+        /* 推力环 - 目标速度求取目标推力 */
+        Vector3f currentVel = agent.getBody().getLinearVelocity(null);
 
-        if (Math.abs(ex) < deadband) ex = 0;
-        if (Math.abs(ey) < deadband) ey = 0;
-        if (Math.abs(ez) < deadband) ez = 0;
+        // 计算每个轴的力
+        double fx = pidVx.step(targetVel.x, currentVel.x);
+        double fy = pidVy.step(targetVel.y, currentVel.y);
+        double fz = pidVz.step(targetVel.z, currentVel.z);
+        fy += mass * gravity; // 补偿重力
+        Vector3f targetForce = new Vector3f((float) fx, (float) fy, (float) fz);
 
-        // 积分
-        integralX = clamp(integralX + ex * Dt, -INTEGRAL_LIMIT_POS, INTEGRAL_LIMIT_POS);
-        integralY = clamp(integralY + ey * Dt, -INTEGRAL_LIMIT_POS, INTEGRAL_LIMIT_POS);
-        integralZ = clamp(integralZ + ez * Dt, -INTEGRAL_LIMIT_POS, INTEGRAL_LIMIT_POS);
+        /* 姿态环 - 目标推力方向求取目标姿态 */
+        Vector3f targetDir = MyQuaternion.rotate(
+                new Quaternion().fromAngles(0, -getTargetYaw(), 0),
+                Vector3f.UNIT_Z.negate(),
+                null);
+        Vector3f targetForceDir;
+        if (targetForce.length() > 0.1) {
+            targetForceDir = targetForce.normalize();
+        } else targetForceDir = Vector3f.UNIT_Y;
+        Vector3f xAxes = targetForceDir.cross(targetDir);
+        Vector3f zAxes = xAxes.cross(targetForceDir); // 通过一系列叉乘得到正交的三个轴，用于获取目标姿态四元数
+        Quaternion targetRot = new Quaternion().fromAxes(xAxes, targetForceDir, zAxes);
+        // 目标与实际姿态的差值
+        Quaternion currentRot = agent.getBody().getPhysicsRotation(null);
+        Quaternion relRot = targetRot.mult(currentRot.inverse());
+        Vector3f relRotAng = PhysicsHelperKt.toBVector3f( // 转为角度差异(弧度制，世界坐标系)
+                SparkMathKt.toQuaternionf(relRot).getEulerAnglesXYZ(new org.joml.Vector3f()));
 
-        // 外环输出加速度
-        float axDes = kpPosX * ex + kiPosX * integralX - kdPosX * vel.x;
-        float ayDes = kpPosY * ey + kiPosY * integralY - kdPosY * vel.y;
-        float azDes = kpPosZ * ez + kiPosZ * integralZ - kdPosZ * vel.z;
+        /* 角速度环 - 目标姿态求取目标角速度 */
+        Vector3f targetAngVelWorld = relRotAng.mult(angVelKp);
+        Vector3f currentAngVelWorld = agent.getBody().getAngularVelocity(null);
+        Vector3f relAngVelWorld = targetAngVelWorld.subtract(currentAngVelWorld);
+        Vector3f targetAngVelLocal = worldToBody(relAngVelWorld);
+        Vector3f currentAngVelLocal = worldToBody(currentAngVelWorld); // 转为局部坐标系
 
-        float totalThrust = mass * (gravity + ayDes);
-        totalThrust = clamp(totalThrust, 0, 4 * maxThrust * 0.9f);
-        float baseThrust = totalThrust / 4f;
+        // 计算每个轴的扭矩
+        double mx = pidPitchRate.step(targetAngVelLocal.x, currentAngVelLocal.x);
+        double my = pidYawRate.step(targetAngVelLocal.y, currentAngVelLocal.y);
+        double mz = pidRollRate.step(targetAngVelLocal.z, currentAngVelLocal.z);
 
-        // 世界转换为机体坐标
-        Quaternion rot = agent.getRotation();
-        Vector3f accWorld = new Vector3f(axDes, 0, azDes);
-        Quaternion quat = rot;
-        Quaternion qInv = new Quaternion(-quat.getX(), -quat.getY(), -quat.getZ(), quat.getW());
+        Vector3f targetTorque = new Vector3f((float) mx, (float) my, (float) mz);
+        float frontDf = targetTorque.x / 0.5f / 2;
+        float rightDf = targetTorque.z / 0.5f / 2;
+        Vector3f extraYawTorque = new Vector3f(0, (float) my, 0);
+        getAgent().getBody().applyTorque(bodyToWorld(extraYawTorque)); // 推进器模型无反扭力矩，故施加一个魔法力矩
 
-        // 把向量当四元数
-        Quaternion vQuat = new Quaternion(accWorld.x, accWorld.y, accWorld.z, 0);
-        Quaternion temp = multiply(qInv, vQuat);
-        Quaternion result = multiply(temp, quat);
-        Vector3f accBody = new Vector3f(result.getX(), result.getY(), result.getZ());
+        /* 以下两个之中选择一种 */
 
-        float phiDes = FastMath.atan2(accBody.z, gravity);
-        float thetaDes = FastMath.atan2(-accBody.x, gravity);
+        // 使用推进器产生推力和力矩 - 最物理，但是控制效果一般，需要好好调参（强化学习？）
+//        Vector3f targetForceLocal = worldToBody(targetForce); // 转为局部坐标系，仅使用y投影作为推进器推力
+//        thrusters.get(0).setTargetThrust((targetForceLocal.y / 4 + frontDf - rightDf) / maxThrust);
+//        thrusters.get(1).setTargetThrust((targetForceLocal.y / 4 + frontDf + rightDf) / maxThrust);
+//        thrusters.get(2).setTargetThrust((targetForceLocal.y / 4 + frontDf - rightDf) / maxThrust);
+//        thrusters.get(3).setTargetThrust((targetForceLocal.y / 4 + -frontDf + rightDf) / maxThrust);
 
-        float maxTilt = 20 * FastMath.DEG_TO_RAD;
-        phiDes = clamp(phiDes, -maxTilt, maxTilt);
-        thetaDes = clamp(thetaDes, -maxTilt, maxTilt);
+        // 推进器仅产生力矩，推力是魔法力 - 视觉效果更好，但不物理
+        getAgent().getBody().applyCentralForce(targetForce); // 魔法力
+        thrusters.get(0).setTargetThrust((frontDf - rightDf) / maxThrust);
+        thrusters.get(1).setTargetThrust((frontDf + rightDf) / maxThrust);
+        thrusters.get(2).setTargetThrust((frontDf - rightDf) / maxThrust);
+        thrusters.get(3).setTargetThrust((-frontDf + rightDf) / maxThrust);
+    }
 
-        float psiDes = getTargetYaw();
+    private Vector3f worldToBody(Vector3f worldVec) {
+        Quaternion invRot = agent.getBody().getPhysicsRotation(null).inverse();
+        return MyQuaternion.rotate(invRot, worldVec, new Vector3f());
+    }
 
-        float phi = agent.getRoll();
-        float theta = agent.getPitch();
-        float psi = agent.getYaw();
-
-        // 角速度轴
-        //float p = angularVelLocal.x; // roll
-        //float r = angularVelLocal.y; // yaw
-        //float q = angularVelLocal.z; // pitch
-        float p = angularVelLocal.x; // roll
-        float q = angularVelLocal.y; // pitch
-        float r = angularVelLocal.z; // yaw
-
-        float ePhi = phiDes - phi;
-        float eTheta = thetaDes - theta;
-        float ePsi = psiDes - psi;
-
-        float attDeadband = 1 * FastMath.DEG_TO_RAD;
-
-        if (Math.abs(ePhi) < attDeadband) ePhi = 0;
-        if (Math.abs(eTheta) < attDeadband) eTheta = 0;
-        if(Math.abs((ePsi)) < attDeadband) ePsi = 0;
-
-        while (ePsi > FastMath.PI) ePsi -= 2 * FastMath.PI;
-        while (ePsi < -FastMath.PI) ePsi += 2 * FastMath.PI;
-
-        float pDes = kpAttRoll * ePhi - kdAttRoll * p;
-        float qDes = kpAttPitch * eTheta - kdAttPitch * q;
-        float rDes = kpAttYaw * ePsi - kdAttYaw * r;
-
-        float torqueRoll = (pDes - p) * 0.05f;
-        float torquePitch = (qDes - q) * 0.05f;
-        float torqueYaw = (rDes - r) * 0.1f;
-        agent.getBody().applyTorque(new Vector3f(0, torqueYaw, 0));
-
-        float rollDiff = torqueRoll / (2 * armLength);
-        float pitchDiff = torquePitch / (2 * armLength);
-        float tLF = baseThrust - rollDiff - pitchDiff;
-        float tRF = baseThrust + rollDiff - pitchDiff;
-        float tLB = baseThrust - rollDiff + pitchDiff;
-        float tRB = baseThrust + rollDiff + pitchDiff;
-
-        // 推力非负保护
-        float minT = Math.min(Math.min(tLF, tRF), Math.min(tLB, tRB));
-        if (minT < 0) {
-            tLF -= minT;
-            tRF -= minT;
-            tLB -= minT;
-            tRB -= minT;
-        }
-
-        thrusters.get(0).setTargetThrust(clamp(tLF / maxThrust, 0f, 1f));
-        thrusters.get(1).setTargetThrust(clamp(tRF / maxThrust, 0f, 1f));
-        thrusters.get(2).setTargetThrust(clamp(tLB / maxThrust, 0f, 1f));
-        thrusters.get(3).setTargetThrust(clamp(tRB / maxThrust, 0f, 1f));
-
-        // 角阻尼
-        Vector3f angVel = new Vector3f();
-        agent.getBody().getAngularVelocity(angVel);
-        // 阻尼系数
-        float damping = 0.3f;
-        // 力矩
-        Vector3f dampingTorque = angVel.mult(-damping, new Vector3f());
-        // 施加到刚体
-        agent.getBody().applyTorque(dampingTorque);
-
-        // 角速度限制
-        float maxRate = 2.0f;
-        Vector3f clamped = new Vector3f(
-                clamp(angVel.x, -maxRate, maxRate),
-                clamp(angVel.y, -maxRate, maxRate),
-                clamp(angVel.z, -maxRate, maxRate)
-        );
-        agent.getBody().setAngularVelocity(clamped);
-
+    private Vector3f bodyToWorld(Vector3f bodyVec) {
+        return MyQuaternion.rotate(agent.getBody().getPhysicsRotation(null), bodyVec, new Vector3f());
     }
 }

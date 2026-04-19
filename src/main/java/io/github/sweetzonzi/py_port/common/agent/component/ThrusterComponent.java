@@ -75,7 +75,7 @@ public class ThrusterComponent extends AbstractAgentComponent {
      * @param thrust 目标推力(0~1)
      */
     public void setTargetThrust(float thrust) {
-        this.syncedData.set(TARGET_THRUST_ID, Math.clamp(thrust, 0f, 1f));
+        this.syncedData.set(TARGET_THRUST_ID, Math.clamp(thrust, -1f, 1f));
     }
 
     @Override

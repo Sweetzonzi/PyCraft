@@ -29,11 +29,11 @@ public class QuatUavAgent extends AbstractAgent {
 
         controller = new QuatUavCtrlComponent("controller", this, List.of(leftFront, rightFront, leftBack, rightBack));
 
+        addComponent(controller);
         addComponent(leftFront);
         addComponent(rightFront);
         addComponent(leftBack);
         addComponent(rightBack);
-        addComponent(controller);
     }
 
     @Override
@@ -45,6 +45,17 @@ public class QuatUavAgent extends AbstractAgent {
     @Override
     public void prePhysicsTick() {
         super.prePhysicsTick();
+        // 测试用代码
+//        Vector3f pos1 = new Vector3f(0f, 0f, 0f);
+//        Vector3f pos2 = new Vector3f(0f, 2f, 7f);
+//        Vector3f pos3 = new Vector3f(5f, -2f, 5f);
+//        if (controller.getTarget().subtract(pos3).lengthSquared() < 0.1f && getPosition().subtract(pos3).lengthSquared() < 1f) {
+//            controller.setTarget(pos1);
+//        } else if (controller.getTarget().subtract(pos1).lengthSquared() < 0.1f && getPosition().subtract(pos1).lengthSquared() < 1f) {
+//            controller.setTarget(pos2);
+//        } else if (controller.getTarget().subtract(pos2).lengthSquared() < 0.1f && getPosition().subtract(pos2).lengthSquared() < 1f) {
+//            controller.setTarget(pos3);
+//        }
     }
 
     public void initHover() {

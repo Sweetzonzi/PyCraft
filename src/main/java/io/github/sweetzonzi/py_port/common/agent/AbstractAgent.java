@@ -115,7 +115,7 @@ abstract public class AbstractAgent implements IAnimatable<AbstractAgent>, Synce
         this.modelController = new ModelController(this);
         this.body = createBody();
         this.body.setCollisionGroup(CollisionGroups.PHYSICS_BODY); // 设置碰撞过滤组
-        this.body.setCollideWithGroups(CollisionGroups.PHYSICS_BODY);
+//        this.body.setCollideWithGroups(CollisionGroups.PHYSICS_BODY);
         this.body.addCollideWithGroup(CollisionGroups.TERRAIN); // 与地面碰撞
         this.body.addCollideWithGroup(CollisionGroups.PAWN); // 与原版实体碰撞，仅判定，无碰撞响应
         PhysicsBodyExtensionKt.setOwner(body, this);
