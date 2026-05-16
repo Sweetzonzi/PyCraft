@@ -56,8 +56,6 @@ public record GetUavStatePayload(int agent_id) implements PyPayload {
         data.addProperty("vx", vel.x);
         data.addProperty("vy", vel.y);
         data.addProperty("vz", vel.z);
-        // 朝向
-        data.addProperty("yaw", uav.getYaw());
 
         return PyHandleResult.success(data);
     }

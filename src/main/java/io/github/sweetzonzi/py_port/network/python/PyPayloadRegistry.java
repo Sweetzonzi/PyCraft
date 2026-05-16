@@ -47,6 +47,9 @@ public class PyPayloadRegistry {
         register(SetUavTargetPayload.TYPE, SetUavTargetPayload::handle);
         register(GetUavStatePayload.TYPE, GetUavStatePayload::handle);
         register(GetUavListPayload.TYPE, GetUavListPayload::handle);
+        register(SpawnUavPayload.TYPE, SpawnUavPayload::handle);
+        register(RemoveUavPayload.TYPE, RemoveUavPayload::handle);
+        register(ClearUavPayload.TYPE, ClearUavPayload::handle);
         PyCraft.LOGGER.info("[PyPayload] Registered {} payload types", HANDLERS.size());
     }
 
