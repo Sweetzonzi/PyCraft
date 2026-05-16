@@ -57,6 +57,7 @@ public record RemoveUavPayload(
             }
 
             if (!removed) {
+
                 result.addProperty("removed", false);
             }
         });

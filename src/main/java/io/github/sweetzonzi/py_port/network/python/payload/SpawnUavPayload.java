@@ -71,7 +71,6 @@ public record SpawnUavPayload(
                                 payload.z()
                         )
                 );
-                // 真正加入世界
                 uav.addToLevel();
                 // 初始化悬停
                 uav.initHover();

@@ -52,6 +52,7 @@ public record ClearUavPayload() implements PyPayload {
                 }
             }
             result.addProperty("removed_count", removedCount);
+
         });
 
         return PyHandleResult.success(result);
