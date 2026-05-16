@@ -62,8 +62,7 @@ public record SpawnUavPayload(
                 // 默认在主世界生成
                 var level = server.overworld();
                 // 创建 UAV
-                QuatUavAgent uav =
-                        new QuatUavAgent(level);
+                QuatUavAgent uav = new QuatUavAgent(level);
                 // 设置初始位置
                 uav.setPosition(
                         new Vector3f(
@@ -72,8 +71,10 @@ public record SpawnUavPayload(
                                 payload.z()
                         )
                 );
-                // 注册 UAV
-                AgentManager.addAgent(uav);
+                // 真正加入世界
+                uav.addToLevel();
+                // 初始化悬停
+                uav.initHover();
                 // 返回 agent_id
                 result.addProperty(
                         "agent_id",
