@@ -24,7 +24,7 @@ public record AgentRemovePayload(
         @Override
         public void encode(@NotNull RegistryFriendlyByteBuf buffer, AgentRemovePayload value) {
             buffer.writeInt(value.id());
-            buffer.writeByte(255);
+            //buffer.writeByte(255);
         }
     };
 
