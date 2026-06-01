@@ -18,6 +18,7 @@ public class AgentRegistry {
      */
     private static void registerAll() {
         register(QuatUavAgent.TYPE, QuatUavAgent::new);
+        register(CarEntity.TYPE, CarEntity::new);
         //TODO: 注册其他智能体类型
     }
 

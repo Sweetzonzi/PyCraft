@@ -50,6 +50,7 @@ public class PyPayloadRegistry {
         register(SpawnUavPayload.TYPE, SpawnUavPayload::handle);
         register(RemoveUavPayload.TYPE, RemoveUavPayload::handle);
         register(ClearUavPayload.TYPE, ClearUavPayload::handle);
+        register(AgentCommandPayload.TYPE, AgentCommandPayload::handle);
         PyCraft.LOGGER.info("[PyPayload] Registered {} payload types", HANDLERS.size());
     }
 
