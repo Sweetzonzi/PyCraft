@@ -1,5 +1,7 @@
 {
   "itemGroup.py_port": "Example Mod Tab",
   "block.py_port.example_block": "Example Block",
-  "item.py_port.example_item": "Example Item"
+  "item.py_port.example_item": "Example Item",
+  "item.py_port.quat_uav": "Quadrotor UAV",
+  "item.py_port.car_item": "CarEntity"
 }

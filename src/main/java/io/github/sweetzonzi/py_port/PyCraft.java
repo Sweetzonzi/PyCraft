@@ -1,5 +1,6 @@
 package io.github.sweetzonzi.py_port;
 
+import io.github.sweetzonzi.py_port.common.item.CarItem;
 import io.github.sweetzonzi.py_port.common.item.QuatUavItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -24,9 +25,11 @@ public class PyCraft {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MOD_ID);
 
     public static final DeferredItem<Item> UAV_ITEM = ITEMS.register("quat_uav", QuatUavItem::new);
+    public static final DeferredItem<Item> CAR_ITEM = ITEMS.register("car_item", CarItem::new);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder().title(Component.translatable("itemGroup.py_port")).withTabsBefore(CreativeModeTabs.COMBAT).icon(() -> UAV_ITEM.get().getDefaultInstance()).displayItems((parameters, output) -> {
         output.accept(UAV_ITEM.get());
+        output.accept(CAR_ITEM.get());
     }).build());
 
     public PyCraft(IEventBus modEventBus, ModContainer modContainer) {
