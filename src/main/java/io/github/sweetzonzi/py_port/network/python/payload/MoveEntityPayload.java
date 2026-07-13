@@ -42,60 +42,79 @@ public record MoveEntityPayload(
         if (server == null) {
             return PyHandleResult.fail("Server not running");
         }
+
         Entity entity = null;
-        // 在所有维度中查找实体
         for (ServerLevel level : server.getAllLevels()) {
             entity = level.getEntity(payload.entity_id());
-            if (entity != null) {
-                break;
-            }
+            if (entity != null) break;
         }
+
         if (entity == null) {
             return PyHandleResult.fail("Entity not found");
         }
+
         double targetX = payload.x();
         double targetY = payload.y();
         double targetZ = payload.z();
+        double maxSpeed = payload.speed();
+
+        Vec3 current = entity.position();
+        Vec3 target = new Vec3(targetX, targetY, targetZ);
+        Vec3 delta = target.subtract(current);
+
+        // 水平距离（忽略Y轴用于判断到达）
+        double horizontalDist = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
+        double verticalDist = delta.y;
+
+        if (horizontalDist < 0.05 && Math.abs(verticalDist) < 0.1) {
+            // 已到达，停止
+            entity.setDeltaMovement(Vec3.ZERO);
+            if (entity instanceof ServerPlayer) {
+                ((ServerPlayer) entity).hurtMarked = true;
+            } else {
+                entity.hasImpulse = true;
+            }
+            return PyHandleResult.success(new JsonObject());
+        }
+
+        // 计算方向（归一化）
+        Vec3 direction = delta.normalize();
+
+        // P控制：距离越近速度越小
+        double k = 0.5;
+        double speed = Math.min(maxSpeed, horizontalDist * k);
+
+        // 构建速度向量
+        Vec3 velocity;
+        if (entity instanceof ServerPlayer) {
+            // 玩家：保持原有Y轴运动（重力/跳跃），只控制水平
+            velocity = new Vec3(
+                    direction.x * speed,
+                    entity.getDeltaMovement().y, // 保留Y轴（重力）
+                    direction.z * speed
+            );
+        } else {
+            // 普通实体：包含Y轴但受重力影响
+            velocity = new Vec3(
+                    direction.x * speed,
+                    direction.y * speed + (entity.onGround() ? 0 : -0.08), // 简单重力补偿
+                    direction.z * speed
+            );
+        }
+
+        entity.setDeltaMovement(velocity);
 
         if (entity instanceof ServerPlayer player) {
-
-            Vec3 current = player.position();
-            Vec3 target = new Vec3(targetX, targetY, targetZ);
-
-            // 忽略Y轴
-            Vec3 delta = new Vec3(target.x - current.x, 0, target.z - current.z);
-
-            double distance = delta.length();
-
-            if (distance < 0.05) {
-                player.setDeltaMovement(Vec3.ZERO);
-            } else {
-                // 单位方向
-                Vec3 direction = delta.normalize();
-                // P控制：距离越近速度越小
-                double k = 0.5;  // 增益
-                double speed = Math.min(payload.speed(), distance * k);
-                Vec3 velocity = direction.scale(speed);
-                player.setDeltaMovement(velocity);
-                player.hurtMarked = true;
-            }
+            player.hurtMarked = true;  // 玩家需要这个来同步客户端
+        } else {
+            entity.hasImpulse = true;  // 非玩家实体需要这个标记
         }
-//        else if (entity instanceof Mob mob) {
-//            // 带AI生物使用自带寻路
-//            mob.getMoveControl().setWantedPosition(targetX, targetY, targetZ, payload.speed());
-//        }
-        else {
-            // 普通实体使用速度移动
-            Vec3 current = entity.position();
-            Vec3 target = new Vec3(
-                    targetX,
-                    targetY,
-                    targetZ
-            );
-            Vec3 direction = target.subtract(current).normalize();
-            Vec3 velocity = direction.scale(payload.speed());
-            entity.setDeltaMovement(velocity);
+
+        // 如果是生物，额外设置AI目标（防止AI覆盖）
+        if (entity instanceof Mob mob) {
+            mob.getNavigation().stop(); // 停止原有导航
         }
+
         return PyHandleResult.success(new JsonObject());
     }
 }
