@@ -1,0 +1,37 @@
+package cn.solarmoon.spark_core.registry.common
+
+import cn.solarmoon.spark_core.animation.anim.AnimApplier
+import cn.solarmoon.spark_core.animation.presets.DynamicStateAnimApplier
+import cn.solarmoon.spark_core.animation.vanilla.BoneModifier
+import cn.solarmoon.spark_core.entity.EntityPatchApplier
+import cn.solarmoon.spark_core.gas.ASCApplier
+import cn.solarmoon.spark_core.pack.SparkPackLoaderApplier
+import cn.solarmoon.spark_core.physics.body.CollisionFuncApplier
+import cn.solarmoon.spark_core.physics.level.PhysicsLevelApplier
+import cn.solarmoon.spark_core.state_machine.StateMachineApplier
+import cn.solarmoon.spark_core.state_machine.presets.PlayerBaseAnimStateMachine
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.common.NeoForge
+
+object SparkCommonEventRegister {
+
+    @JvmStatic
+    fun register(bus: IEventBus) {
+        add(PhysicsLevelApplier)
+        add(AnimApplier)
+        add(PlayerBaseAnimStateMachine.Modifier)
+        add(DynamicStateAnimApplier)
+        add(BoneModifier)
+        add(CollisionFuncApplier)
+        add(EntityPatchApplier)
+        add(StateMachineApplier)
+//        add(SparkPackLoaderApplier)
+        add(ASCApplier)
+
+        bus.addListener(SparkPackLoaderApplier::onClientReload)
+    }
+
+    private fun add(event: Any) {
+        NeoForge.EVENT_BUS.register(event)
+    }
+}

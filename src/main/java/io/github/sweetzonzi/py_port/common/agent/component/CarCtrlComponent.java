@@ -40,12 +40,8 @@ public class CarCtrlComponent extends AbstractAgentComponent {
         }
 
         car.getBody().activate();
-
-        // 1. 前进：恒定推力 + 速度硬上限
         Vector3f forward = car.getFrontVector();
         car.getBody().applyCentralForce(forward.mult(throttle * forwardForce));
-
-        // 速度超过 maxSpeed 就裁切
         Vector3f vel = car.getLinearVelocity();
         float speedSq = vel.lengthSquared();
         if (speedSq > maxSpeed * maxSpeed) {
@@ -53,8 +49,6 @@ public class CarCtrlComponent extends AbstractAgentComponent {
             vel.multLocal(scale);
             car.setLinearVelocity(vel);
         }
-
-        // 2. 转向：直接设置偏航角速度
         car.setAngularVelocity(new Vector3f(0, steering * maxYawRate, 0));
     }
 

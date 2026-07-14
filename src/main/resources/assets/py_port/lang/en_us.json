@@ -3,5 +3,14 @@
   "block.py_port.example_block": "Example Block",
   "item.py_port.example_item": "Example Item",
   "item.py_port.quat_uav": "Quadrotor UAV",
-  "item.py_port.car_item": "CarEntity"
+  "item.py_port.car_item": "CarEntity",
+  "entity.py_port.algorithm_ai": "Algorithm Agent",
+  "item.py_port.algorithm_ai": "Algorithm Agent Spawn",
+
+  "screen.py_port.algorithm_list.title": "Algorithm Encyclopedia",
+  "screen.py_port.back": "< Back",
+
+  "command.py_port.shop.open": "Open Weapon Shop",
+  "command.py_port.shop.balance": "Check Gold Balance",
+  "command.py_port.shop.set": "Set Player Gold (OP only)"
 }

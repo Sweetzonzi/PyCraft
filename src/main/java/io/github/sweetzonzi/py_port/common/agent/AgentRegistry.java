@@ -17,9 +17,10 @@ public class AgentRegistry {
      * Miencraft启动后注册所有智能体类型
      */
     private static void registerAll() {
+        // 注册其他智能体类型
         register(QuatUavAgent.TYPE, QuatUavAgent::new);
         register(CarEntity.TYPE, CarEntity::new);
-        //TODO: 注册其他智能体类型
+        register(AlgorithmAgent.TYPE, AlgorithmAgent::new);
     }
 
     private static void register(String type, Function<Level, ? extends AbstractAgent> agent) {

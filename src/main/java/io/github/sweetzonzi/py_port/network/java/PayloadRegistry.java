@@ -48,5 +48,26 @@ public class PayloadRegistry {
                 SetOverheadPayload.STREAM_CODEC,
                 SetOverheadPayload::handle
         );
+
+        client.playToClient( // 服务端通知客户端打开算法教学界面
+                OpenTeachScreenPayload.TYPE,
+                OpenTeachScreenPayload.STREAM_CODEC,
+                OpenTeachScreenPayload::handle
+        );
+        client.playToClient( // 服务端通知客户端打开武器商店
+                OpenShopPayload.TYPE,
+                OpenShopPayload.STREAM_CODEC,
+                OpenShopPayload::handle
+        );
+        client.playToServer( // 客户端向服务端发送购买请求
+                BuyItemPayload.TYPE,
+                BuyItemPayload.STREAM_CODEC,
+                BuyItemPayload::handle
+        );
+        client.playToServer( // 客户端向服务端发送出售请求
+                SellItemPayload.TYPE,
+                SellItemPayload.STREAM_CODEC,
+                SellItemPayload::handle
+        );
     }
 }
