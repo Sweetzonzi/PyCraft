@@ -55,6 +55,10 @@ public class PyPayloadRegistry {
         register(GetEntityAttributesPayload.TYPE, GetEntityAttributesPayload::handle);
         register(NavigateToEntityPayload.TYPE, NavigateToEntityPayload::handle);
         register(StopNavigationPayload.TYPE, StopNavigationPayload::handle);
+        register(SpawnAlgorithmPayload.TYPE, SpawnAlgorithmPayload::handle);
+        register(SetContainerItemPayload.TYPE, SetContainerItemPayload::handle);
+        register(GetContainerItemsPayload.TYPE, GetContainerItemsPayload::handle);
+        register(TakeContainerItemPayload.TYPE, TakeContainerItemPayload::handle);
         PyCraft.LOGGER.info("[PyPayload] Registered {} payload types", HANDLERS.size());
     }
 
