@@ -69,5 +69,10 @@ public class PayloadRegistry {
                 SellItemPayload.STREAM_CODEC,
                 SellItemPayload::handle
         );
+        client.playToServer( // 客户端请求打开商店（鼠标右击 AlgorithmAgent）
+                RequestOpenShopPayload.TYPE,
+                RequestOpenShopPayload.STREAM_CODEC,
+                RequestOpenShopPayload::handle
+        );
     }
 }

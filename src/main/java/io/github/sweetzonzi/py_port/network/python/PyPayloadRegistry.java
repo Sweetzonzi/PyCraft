@@ -42,6 +42,8 @@ public class PyPayloadRegistry {
         register(DrawPathPayload.TYPE, DrawPathPayload::handle);
         register(GetEntitiesPayload.TYPE, GetEntitiesPayload::handle);
         register(AttackEntityPayload.TYPE, AttackEntityPayload::handle);
+        register(BreakBlockPayload.TYPE, BreakBlockPayload::handle);
+        register(BreakBlocksPayload.TYPE, BreakBlocksPayload::handle);
         register(RemoveEntityPayload.TYPE, RemoveEntityPayload::handle);
         register(SetOverheadPayload.TYPE, SetOverheadPayload::handle);
         register(SetUavTargetPayload.TYPE, SetUavTargetPayload::handle);
