@@ -66,6 +66,9 @@ public class ShopScreen extends Screen {
         String hint = sellMode ? "§7点击物品即可出售" : "§7点击商品即可购买";
         graphics.drawCenteredString(font, hint, width / 2, TITLE_Y + 11, 0x888888);
 
+        // 欢迎语
+        graphics.drawCenteredString(font, "§a欢迎来到商店，退出请按ESC", width / 2, TITLE_Y + 22, 0x00AA00);
+
         // ====== 渲染列表 ======
         int listBottom = height - LIST_BOTTOM_OFFSET;
         int y = LIST_TOP - scrollOffset;
