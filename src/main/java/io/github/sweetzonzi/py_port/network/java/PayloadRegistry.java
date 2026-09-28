@@ -48,6 +48,11 @@ public class PayloadRegistry {
                 SetOverheadPayload.STREAM_CODEC,
                 SetOverheadPayload::handle
         );
+        client.playToClient( // 服务端定向设置目标玩家的视角旋转
+                SetRotationPayload.TYPE,
+                SetRotationPayload.STREAM_CODEC,
+                SetRotationPayload::handle
+        );
 
         client.playToClient( // 服务端通知客户端打开算法教学界面
                 OpenTeachScreenPayload.TYPE,

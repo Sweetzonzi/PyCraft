@@ -3,6 +3,7 @@ package io.github.sweetzonzi.py_port.network.python.infrastructure;
 import com.google.gson.JsonObject;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.util.UUID;
@@ -77,5 +78,38 @@ public class PyContext {
 
     public UUID getUuid() {
         return uuid;
+    }
+
+    /**
+     * Resolves the player targeted by a Python API request.
+     *
+     * <p>An entity id is required when multiple players are online. A missing id
+     * ({@code -1}) remains supported for old single-player Python clients.</p>
+     *
+     * <p>This method must be called from the Minecraft server thread.</p>
+     */
+    public ServerPlayer requirePlayer(int entityId) {
+        MinecraftServer server = getServer();
+        if (server == null) {
+            throw new IllegalStateException("Server not available");
+        }
+
+        var players = server.getPlayerList().getPlayers();
+        if (entityId >= 0) {
+            for (ServerPlayer player : players) {
+                if (player.getId() == entityId) {
+                    return player;
+                }
+            }
+            throw new IllegalArgumentException("Player entity " + entityId + " is not online");
+        }
+
+        if (players.size() == 1) {
+            return players.getFirst();
+        }
+        if (players.isEmpty()) {
+            throw new IllegalStateException("No player is online");
+        }
+        throw new IllegalArgumentException("entity_id is required when multiple players are online");
     }
 }
